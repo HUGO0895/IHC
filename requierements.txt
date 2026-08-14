@@ -1,3 +1,5 @@
 telebot 
 whisper
 dspy
+flask
+dotenv

@@ -1,11 +1,13 @@
 import dspy
-from dbClass import dbCreator
+from config import config
 import telebot
 import whisper
 import json
 from sqlGnerator import ReliableSQLGenerator
 from dotenv import load_dotenv
 import os
+import requests
+import sqlValidator
 load_dotenv()
 lm = dspy.LM('openai/gemma-4-E2B-it-Q4_K_S', api_base='http://localhost:1337/v1', api_key='not-needed')
 dspy.configure(lm=lm)
@@ -16,19 +18,24 @@ class BotTelegram():
         self.bot=telebot.TeleBot(self.apiToken)
         self.bot.message_handler(func=lambda message: True)(self.reply_hi)
         self.bot.message_handler(content_types=['voice'])(self.transcribe_voice_message)
+        
     def generate(self,question):
-        schema =self.schema
-        generator = ReliableSQLGenerator()
-        sql = generator.forward(schema, question)
-        print(sql)
-        print(sql.sql_query)
-        results = dbCreator.cursor_executeSelect(sql.sql_query)
-        return results
+        try:
+            schema =self.schema
+            generator = ReliableSQLGenerator(sqlValidator.SqlValidator(config["schema"],config["query"]))
+            sql = generator.forward(schema, question)
+            
+            results = requests.get(os.getenv('localhostServer')+sql.sql_query)    
+            results=results.text
+            return results
+        except Exception as e:
+            print(e)
+            return 'Não foi possivel gerar/executar a query'
 
     
-    def reply_hi(self,message):
+    def  reply_hi(self,message):
         result = self.generate(message.text)
-        self.bot.reply_to(message, json.dumps(result))
+        self.bot.send_message(chat_id=message.chat.id,text=f'<pre>{result}</pre>',parse_mode='HTML')
 
     def transcribe_voice_message(self,message):
         file_id = message.voice.file_id
@@ -39,7 +46,7 @@ class BotTelegram():
         text = self.whisper_transcribe(file_path)
 
         result = self.generate(text)
-        self.bot.reply_to(message, json.dumps(result))
+        self.bot.reply_to(message, result)
 
     def whisper_transcribe(self,filepath: str, model="tiny") -> str:
         """
@@ -57,10 +64,10 @@ class BotTelegram():
 
         return result["text"]
 
-    def begin_to_pulling(self):
+    def polling(self):
         self.bot.polling()
 
 
-myBot=BotTelegram(os.getenv('ApiTelegram'),dbCreator.schema)
+myBot=BotTelegram(os.getenv('ApiTelegram'),config["schema"])
 
-myBot.begin_to_pulling()
+myBot.polling()
