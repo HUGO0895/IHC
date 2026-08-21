@@ -1,7 +1,7 @@
 from flask import Flask
-from dbClass import dbCreator
-from descritor import Descritor
-from config import config
+from server.dbClass import dbCreator
+from server.descritor import Descritor
+from server.config import config
 
 app = Flask(__name__)
 

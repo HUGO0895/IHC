@@ -1,5 +1,5 @@
 import dspy
-from config import config
+from server.config import config
 import telebot
 import whisper
 import json
@@ -7,9 +7,10 @@ from sqlGnerator import ReliableSQLGenerator
 from dotenv import load_dotenv
 import os
 import requests
-import sqlValidator
+import ia.sqlValidator as sqlValidator
+
 load_dotenv()
-lm = dspy.LM('openai/gemma-4-E2B-it-Q4_K_S', api_base='http://localhost:1337/v1', api_key='not-needed')
+lm = dspy.LM( os.getenv("IALOCAL"), api_base='http://localhost:1337/v1', api_key=os.getenv("apiKey"))
 dspy.configure(lm=lm)
 class BotTelegram():
     def __init__(self,api_token,schema):
@@ -44,7 +45,7 @@ class BotTelegram():
 
         # Transcribe the audio using Whisper AI
         text = self.whisper_transcribe(file_path)
-
+        
         result = self.generate(text)
         self.bot.reply_to(message, result)
 
@@ -68,6 +69,3 @@ class BotTelegram():
         self.bot.polling()
 
 
-myBot=BotTelegram(os.getenv('ApiTelegram'),config["schema"])
-
-myBot.polling()

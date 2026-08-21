@@ -1,6 +1,6 @@
 import sqlite3
 import os
-from config import config
+from server.config import config
 class Db():
     def __init__(self,schema,path=None,data=None):
           self.schema=schema

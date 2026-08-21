@@ -1,6 +1,6 @@
-from txtTosql import TextToSQL
+from ia.txtTosql import TextToSQL
 import dspy
-from sqlValidator import SqlValidator
+from ia.sqlValidator import SqlValidator
 class ReliableSQLGenerator(dspy.Module):
     def __init__(self,sqlValidator):
         super().__init__()
