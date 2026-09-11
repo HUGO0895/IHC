@@ -1,0 +1,6 @@
+telebot 
+openai-whisper
+dspy
+flask
+dotenv
+requests
