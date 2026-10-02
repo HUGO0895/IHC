@@ -1,6 +1,6 @@
 telebot 
 openai-whisper
-dspy
+dspy>=3.4,<4
 flask
-dotenv
+python-dotenv
 requests

@@ -1,0 +1,32 @@
+[
+  {
+    "question": "Liste todos os produtos.",
+    "sql_query": "SELECT * FROM produtos",
+    "ordered": false
+  },
+  {
+    "question": "Quais os nomes dos produtos de bebidas?",
+    "sql_query": "SELECT nome FROM produtos WHERE departamento = 'bebidas'",
+    "ordered": false
+  },
+  {
+    "question": "Quantos produtos estão cadastrados?",
+    "sql_query": "SELECT COUNT(*) FROM produtos",
+    "ordered": false
+  },
+  {
+    "question": "Mostre os produtos de higiene.",
+    "sql_query": "SELECT * FROM produtos WHERE departamento = 'higiene'",
+    "ordered": false
+  },
+  {
+    "question": "Quais produtos vencem antes de setembro de 2026?",
+    "sql_query": "SELECT * FROM produtos WHERE data_vencimento < '2026-09-01'",
+    "ordered": false
+  },
+  {
+    "question": "Quais departamentos existem?",
+    "sql_query": "SELECT DISTINCT departamento FROM produtos",
+    "ordered": false
+  }
+]

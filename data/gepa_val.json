@@ -1,0 +1,32 @@
+[
+  {
+    "question": "Quantos produtos são de bebidas?",
+    "sql_query": "SELECT COUNT(*) FROM produtos WHERE departamento = 'bebidas'",
+    "ordered": false
+  },
+  {
+    "question": "Liste os nomes em ordem alfabética.",
+    "sql_query": "SELECT nome FROM produtos ORDER BY nome",
+    "ordered": true
+  },
+  {
+    "question": "Mostre os produtos chamados sabonete.",
+    "sql_query": "SELECT * FROM produtos WHERE nome = 'sabonete'",
+    "ordered": false
+  },
+  {
+    "question": "Quantos produtos existem por departamento?",
+    "sql_query": "SELECT departamento, COUNT(*) FROM produtos GROUP BY departamento",
+    "ordered": false
+  },
+  {
+    "question": "Liste produtos cadastrados em 8 de agosto de 2026.",
+    "sql_query": "SELECT * FROM produtos WHERE data_cadastro = '2026-08-08'",
+    "ordered": false
+  },
+  {
+    "question": "Liste os produtos do departamento de alimentos.",
+    "sql_query": "SELECT * FROM produtos WHERE departamento = 'alimentos'",
+    "ordered": false
+  }
+]

@@ -1,6 +1,4 @@
 import os
-import re
-import sqlite3
 from urllib.parse import quote
 
 import dspy
@@ -9,119 +7,20 @@ import telebot
 import whisper
 
 from dotenv import load_dotenv
-from server import config
+from db_config import config
+from sql_generator import build_generator, configure_lm
 
 
 load_dotenv()
-
-
-modelo = dspy.LM(
-    os.getenv("IALOCAL"),
-    api_base="http://localhost:1337/v1",
-    api_key="local"
-)
-
-dspy.configure(lm=modelo)
-
-
-class TextToSQL(dspy.Signature):
-    """
-    Gera uma consulta SQL a partir de uma pergunta em linguagem natural.
-    """
-
-    dbschema = dspy.InputField(
-        desc="Database schema"
-    )
-
-    question = dspy.InputField(
-        desc="Natural language question"
-    )
-
-    sql_query = dspy.OutputField(
-        desc="Valid SQL query"
-    )
-
-
-class SqlValidator:
-    def __init__(self, schema, data):
-        self.schema = schema
-        self.data = data
-
-    def isSelectOnly(self, query):
-        regex = (
-            r"\b(INSERT|UPDATE|DELETE|DROP|ALTER|TRUNCATE|"
-            r"GRANT|REVOKE|CREATE|EXEC|MERGE)\b"
-        )
-
-        comando_perigoso = re.search(
-            regex,
-            query,
-            re.IGNORECASE
-        )
-
-        if comando_perigoso:
-            raise ValueError(
-                "Essa query não possui somente SELECT"
-            )
-
-        return True
-
-    def testeSql(self, query):
-        conexao = None
-
-        try:
-            conexao = sqlite3.connect(":memory:")
-            cursor = conexao.cursor()
-
-            cursor.execute(self.schema)
-
-            cursor.executemany(
-                self.data[0],
-                self.data[1]
-            )
-
-            cursor.execute(query)
-            conexao.commit()
-
-        except Exception as error:
-            print(error)
-            raise
-
-        finally:
-            if conexao:
-                conexao.close()
-
-
-class ReliableSQLGenerator(dspy.Module):
-    def __init__(self, sql_validator):
-        super().__init__()
-
-        self.generate_sql = dspy.ChainOfThought(TextToSQL)
-        self.sql_validator = sql_validator
-
-    def forward(self, schema, question):
-        resultado = self.generate_sql(
-            dbschema=schema,
-            question=question
-        )
-
-        self.sql_validator.testeSql(
-            resultado.sql_query
-        )
-
-        self.sql_validator.isSelectOnly(
-            resultado.sql_query
-        )
-
-        print(resultado)
-
-        return resultado
 
 
 class BotTelegram:
     def __init__(self, api_token, schema):
         self.api_token = api_token
         self.schema = schema
+        self.generator = build_generator(
+            schema, config["query"], os.getenv("GEPA_PROGRAM_PATH")
+        )
         self.bot = telebot.TeleBot(self.api_token)
 
         self.bot.message_handler(
@@ -134,16 +33,7 @@ class BotTelegram:
 
     def generate(self, question):
         try:
-            validator = SqlValidator(
-                config["schema"],
-                config["query"]
-            )
-
-            generator = ReliableSQLGenerator(
-                validator
-            )
-
-            resultado_sql = generator(
+            resultado_sql = self.generator(
                 schema=self.schema,
                 question=question
             )
@@ -216,6 +106,7 @@ class BotTelegram:
 
 
 if __name__ == "__main__":
+    dspy.configure(lm=configure_lm())
     token = os.getenv("ApiTelegram")
 
     if not token:
