@@ -1,4 +1,7 @@
+import html
 import os
+import shutil
+import tempfile
 from urllib.parse import quote
 
 import dspy
@@ -21,6 +24,7 @@ class BotTelegram:
         self.generator = build_generator(
             schema, config["query"], os.getenv("GEPA_PROGRAM_PATH")
         )
+        self.modelo_whisper = None
         self.bot = telebot.TeleBot(self.api_token)
 
         self.bot.message_handler(
@@ -73,39 +77,72 @@ class BotTelegram:
         )
 
     def transcribe_voice_message(self, message):
-        file_id = message.voice.file_id
+        try:
+            # Baixa o áudio (.ogg) do Telegram para um arquivo temporário
+            info = self.bot.get_file(message.voice.file_id)
+            audio = self.bot.download_file(info.file_path)
 
-        file_path = self.bot.get_file_url(file_id)
+            with tempfile.NamedTemporaryFile(
+                suffix=".ogg", delete=False
+            ) as arquivo:
+                arquivo.write(audio)
+                caminho = arquivo.name
 
-        texto = self.whisper_transcribe(
-            file_path
-        )
+            try:
+                texto = self.whisper_transcribe(caminho)
+            finally:
+                os.remove(caminho)
 
+        except Exception as error:
+            print(f"Erro ao transcrever áudio: {error!r}")
+            self.bot.reply_to(
+                message,
+                "Não foi possível transcrever o áudio."
+            )
+            return
+
+        if not texto:
+            self.bot.reply_to(
+                message,
+                "Não entendi o áudio, tente falar de novo."
+            )
+            return
+
+        print(f"Transcrição: {texto}")
         resultado = self.generate(texto)
 
         self.bot.reply_to(
             message,
-            resultado
+            f"Você disse: {html.escape(texto)}\n\n<pre>{html.escape(resultado)}</pre>",
+            parse_mode="HTML"
         )
 
-    def whisper_transcribe(
-        self,
-        filepath,
-        model="tiny"
-    ):
-        modelo_whisper = whisper.load_model(model)
+    def whisper_transcribe(self, filepath):
+        # Carrega o modelo uma única vez (na primeira mensagem de voz)
+        if self.modelo_whisper is None:
+            self.modelo_whisper = whisper.load_model(
+                os.getenv("WHISPER_MODEL", "base")
+            )
 
-        resultado = modelo_whisper.transcribe(
-            filepath
+        resultado = self.modelo_whisper.transcribe(
+            filepath,
+            language="pt",
+            fp16=False
         )
 
-        return resultado["text"]
+        return resultado["text"].strip()
 
     def polling(self):
         self.bot.polling()
 
 
 if __name__ == "__main__":
+    if shutil.which("ffmpeg") is None:
+        raise RuntimeError(
+            "ffmpeg não encontrado. O Whisper precisa dele para ler áudio. "
+            "Windows: winget install Gyan.FFmpeg | Linux/WSL: sudo apt install ffmpeg"
+        )
+
     dspy.configure(lm=configure_lm())
     token = os.getenv("ApiTelegram")
 
